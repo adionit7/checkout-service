@@ -31,3 +31,14 @@ test('HTTP: concurrent identical retries over the wire yield one order (201 + 20
   assert.equal((await call('GET', '/orders/nope')).status, 404);
   assert.equal((await call('POST', '/admin/coupons/generate')).status, 409);
 });
+
+test('HTTP: two servers are isolated (no shared routing state)', async (t) => {
+  const a = createServer(new Shop());
+  const b = createServer(new Shop());
+  await Promise.all([a, b].map((s) => new Promise((r) => s.listen(0, r))));
+  t.after(() => { a.close(); b.close(); });
+  const url = (s) => `http://127.0.0.1:${s.address().port}`;
+  const { id } = await (await fetch(url(a) + '/carts', { method: 'POST' })).json();
+  assert.equal((await fetch(`${url(a)}/carts/${id}`)).status, 200);
+  assert.equal((await fetch(`${url(b)}/carts/${id}`)).status, 404);
+});

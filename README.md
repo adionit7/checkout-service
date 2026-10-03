@@ -4,7 +4,7 @@ Zero-dependency Node (>=20) service, in-memory store. Design rationale: see [DEC
 
 ```bash
 npm start                      # http://localhost:3000   (PORT, COUPON_EVERY_N=5, COUPON_PERCENT=10)
-npm test                       # 10 tests, incl. concurrent / retry scenarios
+npm test                       # 11 tests, incl. concurrent / retry scenarios
 ```
 
 Seed products: `tee`, `mug`, `sticker`, `poster`, and `hoodie` (stock 3, the limited-inventory item).

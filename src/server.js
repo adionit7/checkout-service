@@ -1,14 +1,15 @@
 import http from 'node:http';
+import { pathToFileURL } from 'node:url';
 import { Shop, ApiError } from './shop.js';
 
-const routes = [];
-const route = (method, path, handler) => {
-  const keys = [];
-  const re = new RegExp('^' + path.replace(/:(\w+)/g, (_, k) => (keys.push(k), '([^/]+)')) + '$');
-  routes.push({ method, re, keys, handler });
-};
-
 export function createServer(shop = new Shop()) {
+  const routes = [];
+  const route = (method, path, handler) => {
+    const keys = [];
+    const re = new RegExp('^' + path.replace(/:(\w+)/g, (_, k) => (keys.push(k), '([^/]+)')) + '$');
+    routes.push({ method, re, keys, handler });
+  };
+
   route('GET', '/products', () => [200, shop.listProducts()]);
   route('POST', '/carts', () => [201, shop.createCart()]);
   route('GET', '/carts/:id', ({ p }) => [200, shop.viewCart(p.id)]);
@@ -69,7 +70,7 @@ export function createServer(shop = new Shop()) {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const shop = new Shop({ n: Number(process.env.COUPON_EVERY_N ?? 5), x: Number(process.env.COUPON_PERCENT ?? 10) });
   const port = Number(process.env.PORT ?? 3000);
   createServer(shop).listen(port, () => console.log(`listening on :${port} (n=${shop.n}, x=${shop.x}%)`));
