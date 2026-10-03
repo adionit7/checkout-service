@@ -58,7 +58,15 @@ No auth implemented. Treated as administrative: everything under `/admin/*`. In 
 Move state to Postgres. Stock: `UPDATE products SET stock = stock - $q WHERE id=$1 AND stock >= $q` (0 rows = conflict) inside one transaction with order insert. Idempotency: table with `UNIQUE(cart_id, key)`, insert-first so the DB arbitrates concurrent duplicates. Coupons: `UPDATE coupons SET status='redeemed' WHERE code=$1 AND status='available'`, plus `UNIQUE(milestone)` so concurrent generation can't duplicate; milestone derived from a count read under a lock (or an advisory lock / counter row). Payment: keep reserve → pay → confirm as separate transactions with a sweeper that expires `pending` orders; real provider call carries our idempotency key. Report from a read replica or materialised aggregates.
 
 ## AI usage
-_To be completed by the author before submission, in their own words: which tools were used, and one concrete example where AI output was corrected/rejected/redirected (e.g. a race or rounding rule you caught). This section must reflect what actually happened._
+I used Claude Code (Claude Sonnet) as a pair programmer. I gave it the assignment text and the design direction I wanted (in-memory store, integer cents, reserve → pay → confirm/compensate checkout, required Idempotency-Key). It drafted the service, the HTTP layer, the tests and the first version of these docs. I did not treat the draft as done: I ran the tests, then ran the real server and exercised the whole flow with curl, and reviewed the code again after that.
+
+That verification caught two bugs in the AI-written code that its own passing tests had missed:
+- **`npm start` exited silently.** The "is this the main module?" check compared `import.meta.url` to `file://${process.argv[1]}`, which breaks when the path contains spaces (the URL is percent-encoded). The tests import the server directly, so they never hit it. Fixed with `pathToFileURL`.
+- **Shared routing state.** The route table was a module-level array that `createServer()` appended to, so a second server would have served the first server's data. Fixed by building routes per server, with a test proving two servers are isolated.
+
+Smaller correction: the generated `npm test` script passed a directory to `node --test`, which fails on Node 22; changed to a glob.
+
+What I'd say about the approach: AI was good for speed on boilerplate and for enumerating edge cases. It was not a substitute for running the thing: both real bugs were found by execution, not by reading green tests. The concurrency guarantee (no `await` inside the check-and-write blocks) is a design choice I can explain and defend, and it is the first place I would look if asked to change a rule.
 
 ## If I had two more hours
 1. Randomised interleaving/property test comparing stock, coupons and report to a model after thousands of operations.
